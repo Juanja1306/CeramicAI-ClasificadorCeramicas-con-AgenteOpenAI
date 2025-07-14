@@ -7,3 +7,5 @@ wallet/
 instantclient/
 *.sql
 assistant_id.json
+FastApi-Ceramicas.postman_collection.json
+*.pkl
