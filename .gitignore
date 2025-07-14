@@ -6,3 +6,4 @@ Credentials
 wallet/
 instantclient/
 *.sql
+assistant_id.json
