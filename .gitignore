@@ -1,0 +1,8 @@
+.venv
+.venv2
+__pycache__
+Credentials
+.env
+wallet/
+instantclient/
+*.sql
