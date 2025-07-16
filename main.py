@@ -158,7 +158,7 @@ def get_db():
         pool.release(conn)
 
 # ─────────────── Endpoint de conversación con función SQL ───────────────
-@app.get("/graimanchat")
+@app.post("/graimanchat")
 async def conversar_sql(mensaje: str = Form(None), thread_id: str = Form(None), imagen: UploadFile | None = File(None), topk: int = Form(3, gt=1, le=5)):
 
     #Inicializar thread
