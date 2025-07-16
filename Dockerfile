@@ -66,7 +66,7 @@ COPY --from=builder /root/.local /root/.local
 ENV PATH=/root/.local/bin:$PATH
 
 # Copiar código fuente y recursos
-COPY TestUnificado.py config.py features.py ./
+COPY main.py config.py features.py ./
 COPY mejor_modelo_lbp_RFC_FINAL.pkl classes.json ./
 
 # Copiar wallet de Oracle
@@ -97,4 +97,4 @@ ENV ORACLE_LIB_DIR=/opt/oracle/instantclient \
 EXPOSE 8000
 
 # Comando de inicio
-CMD ["uvicorn", "TestUnificado:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
