@@ -68,6 +68,7 @@ ENV PATH=/root/.local/bin:$PATH
 # Copiar código fuente y recursos
 COPY main.py config.py features.py ./
 COPY mejor_modelo_lbp_RFC_FINAL.pkl classes.json ./
+COPY ceramicas/ ./ceramicas
 
 # Copiar wallet de Oracle
 COPY wallet/ $TNS_ADMIN/

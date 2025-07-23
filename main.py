@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List
 
 import cx_Oracle, joblib, numpy as np
+import binascii
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -227,12 +228,37 @@ async def conversar_sql(mensaje: str = Form(None), thread_id: str = Form(None), 
             break
         await asyncio.sleep(1)
 
+    # Obtener imagen de la familia principal
+    principal_imagen = []
+    if principal:
+        images_dir = Path("./ceramicas") / principal
+        if images_dir.is_dir():
+            for img_path in images_dir.iterdir():
+                if img_path.is_file() and img_path.suffix.lower() in [".jpg", ".jpeg", ".png", ".gif"]:
+                    data = img_path.read_bytes()
+                    b64str = binascii.b2a_base64(data).decode('ascii').strip()
+                    principal_imagen.append(b64str)
+
+    # Obtener imagen de las otras familias
+    otras_familias = []
+    imagenes_otras = []
+    for fam in otros:
+        images_dir = Path("./ceramicas") / fam
+        if images_dir.is_dir():
+            for img_path in images_dir.iterdir():
+                if img_path.is_file() and img_path.suffix.lower() in [".jpg", ".jpeg", ".png", ".gif"]:
+                    data = img_path.read_bytes()
+                    b64str = binascii.b2a_base64(data).decode('ascii').strip()
+                    imagenes_otras.append(b64str)
+    
+        otras_familias.append({"nombre": fam, "imagenes":imagenes_otras})
+
     messages = await openai_client.beta.threads.messages.list(thread_id=thread_id)
     for msg in messages.data:
         if msg.role == "assistant":
             for c in msg.content:
                 if hasattr(c, "text"):
-                    return {"respuesta": c.text.value.strip(), "thread_id": thread_id, "Principal": principal, "Otras": otros}
+                    return {"respuesta": c.text.value.strip(), "thread_id": thread_id, "Principal": principal, "imagenPrincipal": principal_imagen, "Otras": otras_familias}
 
     return {"respuesta": "Sin respuesta del asistente", "thread_id": thread_id}
 
