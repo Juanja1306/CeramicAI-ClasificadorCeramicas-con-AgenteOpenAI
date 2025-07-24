@@ -170,11 +170,14 @@ async def conversar_sql(mensaje: str = Form(None), thread_id: str = Form(None), 
     #Si se envía imagen, extraer características
     principal = None
     otros = None
-
+    principal_prob = None
+    otras_probs = None
     if imagen:
-        principal, otros = await _clasificar_imagen(imagen, topk)
+        principal, otros, principal_prob, otras_probs = await _clasificar_imagen(imagen, topk)
         logger.info(f"Familia principal: {principal}")
         logger.info(f"Otras familias: {otros}")
+        logger.info(f"Probabilidad principal: {principal_prob}")
+        logger.info(f"Probabilidades otras: {otras_probs}")
         # Mensaje de imagen como contexto fuerte
         mensaje_imagen = (
             f"Este mensaje NO es para mostrar al usuario, solo para que lo uses como contexto: "
@@ -227,38 +230,42 @@ async def conversar_sql(mensaje: str = Form(None), thread_id: str = Form(None), 
         elif status.status == "completed":
             break
         await asyncio.sleep(1)
-
-    # Obtener imagen de la familia principal
     principal_imagen = []
-    if principal:
-        images_dir = Path("./ceramicas") / principal
-        if images_dir.is_dir():
-            for img_path in images_dir.iterdir():
-                if img_path.is_file() and img_path.suffix.lower() in [".jpg", ".jpeg", ".png", ".gif"]:
-                    data = img_path.read_bytes()
-                    b64str = binascii.b2a_base64(data).decode('ascii').strip()
-                    principal_imagen.append(b64str)
-
-    # Obtener imagen de las otras familias
     otras_familias = []
     imagenes_otras = []
-    for fam in otros:
-        images_dir = Path("./ceramicas") / fam
-        if images_dir.is_dir():
-            for img_path in images_dir.iterdir():
-                if img_path.is_file() and img_path.suffix.lower() in [".jpg", ".jpeg", ".png", ".gif"]:
-                    data = img_path.read_bytes()
-                    b64str = binascii.b2a_base64(data).decode('ascii').strip()
-                    imagenes_otras.append(b64str)
-    
-        otras_familias.append({"nombre": fam, "imagenes":imagenes_otras})
+    if imagen:
+        # Obtener imagen de la familia principal
+        if principal:
+            images_dir = Path("./ceramicas") / principal
+            if images_dir.is_dir():
+                for img_path in images_dir.iterdir():
+                    if img_path.is_file() and img_path.suffix.lower() in [".jpg", ".jpeg", ".png", ".gif"]:
+                        data = img_path.read_bytes()
+                        b64str = binascii.b2a_base64(data).decode('ascii').strip()
+                        principal_imagen.append(b64str)
+
+        # Obtener imagen de las otras familias
+
+        i = 0
+        for fam in otros:
+            images_dir = Path("./ceramicas") / fam
+            if images_dir.is_dir():
+                for img_path in images_dir.iterdir():
+                    if img_path.is_file() and img_path.suffix.lower() in [".jpg", ".jpeg", ".png", ".gif"]:
+                        data = img_path.read_bytes()
+                        b64str = binascii.b2a_base64(data).decode('ascii').strip()
+                        imagenes_otras.append(b64str)
+        
+            otras_familias.append({"nombre": fam, "imagenes":imagenes_otras, "probabilidad": otras_probs[i]})
+            i += 1
+
 
     messages = await openai_client.beta.threads.messages.list(thread_id=thread_id)
     for msg in messages.data:
         if msg.role == "assistant":
             for c in msg.content:
                 if hasattr(c, "text"):
-                    return {"respuesta": c.text.value.strip(), "thread_id": thread_id, "Principal": principal, "imagenPrincipal": principal_imagen, "Otras": otras_familias}
+                    return {"respuesta": c.text.value.strip(), "thread_id": thread_id, "Principal": principal, "imagenPrincipal": principal_imagen, "probabilidadPrincipal": principal_prob, "Otras": otras_familias}
 
     return {"respuesta": "Sin respuesta del asistente", "thread_id": thread_id}
 
@@ -320,7 +327,12 @@ async def _clasificar_imagen(imagen: UploadFile, topk: int) -> str:
     except:
         otrasFamilias = []
 
-    return familia_principal, otrasFamilias
+    # 6. Devolver predicciones de 2 maneras. Debe ser solo la probabilidad de la principal suelta, y las otras en un array
+    principal_prob = float(predicciones[0][1])
+    otras_probs = [float(prob) for fam, prob in predicciones[1:]]
+
+
+    return familia_principal, otrasFamilias, principal_prob, otras_probs
 
 
 # ─────────────── Safe read upload ───────────────
